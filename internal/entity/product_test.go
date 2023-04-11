@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NEW_PROduct(t *testing.T) {
+func Test_NEW_PRODUCT(t *testing.T) {
 	product, err := NewProduct("product 1", 100)
 	assert.Nil(t, err)
 	assert.NotNil(t, product)
