@@ -13,20 +13,19 @@ import (
 )
 
 type UserHandler struct {
-	UserDB     database.UserInterface
-	Jwt        *jwtauth.JWTAuth
-	JetExpires int
+	UserDB database.UserInterface
 }
 
-func NewUserHandler(db database.UserInterface, jwt *jwtauth.JWTAuth, jwtExpires int) *UserHandler {
+func NewUserHandler(db database.UserInterface) *UserHandler {
 	return &UserHandler{
-		UserDB:     db,
-		Jwt:        jwt,
-		JetExpires: jwtExpires,
+		UserDB: db,
 	}
 }
 
 func (h *UserHandler) GetJWT(w http.ResponseWriter, r *http.Request) {
+	jwt := r.Context().Value("jwt").(*jwtauth.JWTAuth)
+	jwtExpiresIn := r.Context().Value("jwt_expires_in").(int)
+
 	var userDTO dto.GetJWTInput
 	err := json.NewDecoder(r.Body).Decode(&userDTO)
 	if err != nil {
@@ -45,9 +44,9 @@ func (h *UserHandler) GetJWT(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, tokenString, _ := h.Jwt.Encode(map[string]any{
+	_, tokenString, _ := jwt.Encode(map[string]any{
 		"sub": user.ID.String(),
-		"exp": time.Now().Add(time.Second * time.Duration(h.JetExpires)).Unix(),
+		"exp": time.Now().Add(time.Second * time.Duration(jwtExpiresIn)).Unix(),
 	})
 
 	accessToken := struct {
