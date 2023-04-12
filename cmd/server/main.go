@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/go-chi/jwtauth"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -16,7 +17,7 @@ import (
 )
 
 func main() {
-	_, err := configs.LoadConfig(".")
+	configs, err := configs.LoadConfig(".")
 	if err != nil {
 		panic(err)
 	}
@@ -31,20 +32,24 @@ func main() {
 	userDB := database.NewUser(db)
 
 	productHandler := handlers.NewProductHandler(productDB)
-	userHandler := handlers.NewUserHandler(userDB)
+	userHandler := handlers.NewUserHandler(userDB, configs.TokenAuth, configs.JwtExperesIn)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	// products routes
-	r.Post("/products", productHandler.CreateProduct)
-	r.Get("/products/{id}", productHandler.GetProduct)
-	r.Get("/products", productHandler.GetProducts)
-	r.Put("/products/{id}", productHandler.UpdateProduct)
-	r.Delete("/products/{id}", productHandler.DeleteProduct)
+	r.Route("/products", func(r chi.Router) {
+		r.Use(jwtauth.Verifier(configs.TokenAuth))
+		r.Use(jwtauth.Authenticator)
+		r.Post("/", productHandler.CreateProduct)
+		r.Get("/{id}", productHandler.GetProduct)
+		r.Get("/", productHandler.GetProducts)
+		r.Put("/{id}", productHandler.UpdateProduct)
+		r.Delete("/{id}", productHandler.DeleteProduct)
+	})
 
 	// users routes
 	r.Post("/users", userHandler.CreateUser)
+	r.Post("/users/generate-token", userHandler.GetJWT)
 
 	http.ListenAndServe(":8080", r)
 }
